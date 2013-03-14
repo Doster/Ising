@@ -1,14 +1,14 @@
-! Name:      Henry Jared Doster
+! Name:      Jared Doster and Chiel Donkers
 ! Course:    PHY 832
-! Project:   Monte Carlo and Metropolis Test applied to Ising Model
+! Project:   Monte Carlo Ising Model: Wolf Algorithm and Metropolis Test
 ! 
-!Program Summary
+!Program Summary (Ising)
 !
 !  Input:    Hardcode three parameters to the subroutine (temperature of electrons
 !            and the length and width of the eletron array).  
 !
 !  Process:  Creates an array representing the arry of electrons.
-!            Calls the subroutine in a nested loop from T=0 to T=arbitrary.
+!            Calls the subroutine in a nested loop from temp=0 to tempfinal=arbitrary.
 !            Each iteration of the outer "temperature" loop returns the magnetizaton for a
 !            particular temperature.
 !            The iterations of the inner loop will continue until the magnetization returned
@@ -18,97 +18,112 @@
 !            of the outer "temperature" loop
 !
 !
-!Subroutine Summary
+!Subroutine Summary (Mainloop)
 !
 ! Input:     Three parameters from the program
 !
 ! Process:   For a particular temperature, runs a loop involving random selection of electrions
-!            and performing a Metropolis Test
+!            and performing a Metropolis Test. Each time that the mainloop is called, the spins
+!            of the array are randomly chosen and flipped.
 !            Many iterations of this loop cause the calculated magnetization to converge to a range
-!            of values
+!            of values.
 !
 ! Output:    Magnetization for a particular temperature for a particular iteration.
 !            Output will vary each time that the subroutine is called
 
 
-! TESTEST
 
-program firstproj
+program ising
  
   implicit none
 
-!! INPUT: Final temperature (Kelvin), row and column size, step of temperature loop
-  real,parameter :: T = 30.
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Declarations !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!! INPUT: Final temperature (Kelvin), final time, row and column size, step of temperature loop
+  integer,parameter :: tempfinal = 100     ! Final temperature at end of temperature loop
+  integer,parameter :: timefinal = 1000    ! Final time at end of time loop
+  integer,parameter :: step = 1    
   integer,parameter :: rowsize = 10
   integer,parameter :: colsize = 10
-  real, parameter :: step =.01
+
 
 !! fortran begins indexing from 1. Start it from 0 because the rand() starts from 0
   real, dimension(0:rowsize-1, 0:colsize-1) :: spin
 
-
-  real :: count = 0
   real :: mag
-  integer :: time, i, j
+  integer :: cputime, tempcount, timecount
 
-!!!!!!!!!!! STORE MAGNETIZATION AS A FUNCTION OF ITERATIONS HARCODED SIZE OF MATRIX!!!!!!!!!!!!!!!!!!!!
-  real,dimension(5) :: mag_time
 
-!!!!!!!!!!! STORE MAGNETIZATION AS A FUNCTION OF TEMPERATURE
-!  real, dimension(0:T/step) :: mag_temp
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Main Body !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+!!! Open files for writing data !!!                                                                                                                                      
+  call opentextfiles
 
 
 !! Initialize Configuration (spin up = 1, spin down = -1)
 
-  do i=0,rowsize-1
-    do j=0,colsize-1
-        spin(i,j) = 1.
-     end do
-  end do
+!!  spin = 1  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! REMOVE
 
 
 !! Seed random number generator
 
-  call system_clock(time)
-  call srand(time)
+  call system_clock(cputime)
+  call srand(cputime)
 
 
-!! Call subroutine and run main loop
-
-! Initialize counters  !!!!!!!!!!! THIS MAY BE DELETED
-  i = 0    
-  count = 0
-
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-!! MAKE A TEMPERATURE DO LOOP: RUNS THROUGH TEMPERATURES (using count = count + step)
+!! Run main loop subroutine
+!! In the following nested loop, the outer loop is the temperature loop (for plot of magnetization vs. temperature) 
+!! and the inner loop is the converging time loop (for plot of magnetization vs. time)
 
 
-!!!!!!!!!!++++++++++++++++++++ CONVERGING DO LOOP
+  tempcount=0
+  do while (tempcount .LE. tempfinal)
 
-  do while (count .LE. T)
-    call mainloop(spin, rowsize, colsize, T, mag)
+! Re-initialize the spin lattice for every temperature
+    spin=1       
 
-!    magtol(i)=mag  !!!!!!!!!!!!! MAJOR SEG FAULT HERE!!!!!!!!
-    print*, mag
-    count = count + step
-    i = i + 1
-    read*,    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    !!! END THIS DO LOOP ONCE MAGNETIZATION  HAS CONVERGED
+    timecount=0
+    do while (timecount .LE. timefinal)
+        call mainloop(spin, rowsize, colsize, tempcount, mag, timecount)
+
+! We want time to print only once (choose an arbitrary temperature)
+        if (tempcount == 30) then
+           WRITE(16,*) mag
+        endif
+     
+        timecount = timecount + step
+     enddo
+
+     WRITE(15,*) mag
+
+     tempcount = tempcount+1
   enddo
 
-!!!!!!!!!!!!++++++++++++++++ END CONVERGINE DO LOOP
+  
 
-!! Store converged magnetization for a particular temperature
-!!! END TEMPERATURE DO LOOP
-!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-end program firstproj
+!!! Close text files !!!                                                                                                                                                 
+  call closetextfiles
 
 
+end program ising
 
 
-subroutine mainloop(spin, rowsize, colsize, T, mag)
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Subroutines !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!----------------------------------------------------------------------------------------------
+!! Mainloop
+
+subroutine mainloop(spin, rowsize, colsize, tempcount, mag, timecount)
 
   implicit none
 
@@ -116,18 +131,25 @@ subroutine mainloop(spin, rowsize, colsize, T, mag)
 
   integer,intent(in) :: rowsize
   integer,intent(in) :: colsize
-  real,intent(in) :: T
+  integer,intent(in) :: tempcount
+  integer,intent(in) :: timecount !! can remove later!!!!!!!!!!!
   real,dimension(0:rowsize-1, 0:colsize-1) :: spin
   real :: mag
 
  
 !! Subroutine declerations
   integer :: i,j,ix,iy
-  real :: totup
-  real :: totdown
+  real :: temp
+  real :: totup=0
+  real :: totdown=0
   real :: r1,r2,r3
-  real :: expo, ediff, enew, eold
+  real :: expo, ediff, enew=0, eold=0
   real :: oldsp, newsp, st, sb, sl, sr, neighbors
+
+
+!! Tempcount is an integer, we want to rescale it to a real
+
+  temp = tempcount/10.
 
 
 !! Randomly choose a location in the array (the old spin)
@@ -140,8 +162,7 @@ subroutine mainloop(spin, rowsize, colsize, T, mag)
 
   oldsp = spin(ix,iy)
 
-
-!! Calculate energy due to the neighbors (if statement takes into account free boundaries)
+!! Calculate energy due to the neighbors (the if-statements takes into account the free boundaries)
 
   sl = spin(ix-1, iy)
   sr = spin(ix+1, iy)
@@ -163,7 +184,7 @@ subroutine mainloop(spin, rowsize, colsize, T, mag)
   elseif (oldsp .EQ. -1) then
      eold = -1
   else
-     print*, 'At least one oldsp is neither up nor down.'
+     print*, 'At least one oldsp is neither up nor down.  ', oldsp, temp, timecount
   endif
      
 
@@ -187,7 +208,7 @@ subroutine mainloop(spin, rowsize, colsize, T, mag)
 
 !! Calculate energy and exponential 
 
-  expo = exp(ediff/T)
+  expo = exp(ediff/temp)
 
 
 !! Metropolis test
@@ -199,10 +220,11 @@ subroutine mainloop(spin, rowsize, colsize, T, mag)
   endif
 
 
-!! Calculate averages (first initialize counters)
+!! Calculate magnetization  (quantifies how magnetic the material is)
+!! (first initialize counters)
 
   totup = 0
-  totup = 0
+  totdown = 0
  
   do i=0,rowsize-1
     do j=0,colsize-1
@@ -220,4 +242,41 @@ subroutine mainloop(spin, rowsize, colsize, T, mag)
 
   mag = (totup - totdown)/(rowsize*colsize)
 
+
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!! Make average of last 20 magnetizations
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
+
 end subroutine mainloop
+
+
+!----------------------------------------------------------------------------------
+!! Open data files
+
+subroutine opentextfiles
+    integer :: OPEN_STATUS
+    OPEN(UNIT=15,FILE="mag_temp.txt",STATUS="REPLACE",IOSTAT=OPEN_STATUS)
+    if (OPEN_STATUS /= 0) then
+       STOP "------------Error, mag_temp file not opened properly------------"
+    endif
+    OPEN(UNIT=16,FILE="mag_time.txt",STATUS="REPLACE",IOSTAT=OPEN_STATUS)
+    if (OPEN_STATUS /= 0) then
+       STOP "------------Error, mag_time file not opened properly------------"
+    endif
+
+
+end subroutine
+
+
+!---------------------------------------------------------------------------------
+!! Close data files
+
+subroutine closetextfiles
+    CLOSE(UNIT=15)
+    CLOSE(UNIT=16)
+endsubroutine
