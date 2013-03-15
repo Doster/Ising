@@ -43,11 +43,11 @@ program ising
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 !! INPUT: Final temperature (Kelvin), final time, row and column size, step of temperature loop
-  integer,parameter :: tempfinal = 100     ! Final temperature at end of temperature loop
-  integer,parameter :: timefinal = 1000    ! Final time at end of time loop
+  integer,parameter :: tempfinal = 40     ! Final temperature at end of temperature loop
+  integer,parameter :: timefinal = 50000    ! Final time at end of time loop
   integer,parameter :: step = 1    
-  integer,parameter :: rowsize = 10
-  integer,parameter :: colsize = 10
+  integer,parameter :: rowsize = 20
+  integer,parameter :: colsize = 20
 
 
 !! fortran begins indexing from 1. Start it from 0 because the rand() starts from 0
@@ -94,14 +94,14 @@ program ising
         call mainloop(spin, rowsize, colsize, tempcount, mag, timecount)
 
 ! We want time to print only once (choose an arbitrary temperature)
-        if (tempcount == 30) then
+        if (tempcount == 25) then
            WRITE(16,*) mag
         endif
      
         timecount = timecount + step
      enddo
 
-     WRITE(15,*) mag
+     WRITE(15,*) abs(mag)
 
      tempcount = tempcount+1
   enddo
@@ -174,41 +174,38 @@ subroutine mainloop(spin, rowsize, colsize, tempcount, mag, timecount)
   if (iy .EQ. 0) st = 0
   if (iy .EQ. colsize) sb = 0
 
-  neighbors = sl + sr + st + sb
+  neighbors = -sl - sr - st - sb
 
 
 !! Calculate energy of old spin
 
-  if (oldsp .EQ. 1) then
-     eold = 1
-  elseif (oldsp .EQ. -1) then
-     eold = -1
-  else
-     print*, 'At least one oldsp is neither up nor down.  ', oldsp, temp, timecount
-  endif
+
+  eold = oldsp*neighbors
+
+!  if (oldsp .EQ. 1) then
+!     eold = 1
+!  elseif (oldsp .EQ. -1) then
+!     eold = -1
+!  else
+!     print*, 'At least one oldsp is neither up nor down.  ', oldsp, temp, timecount
+!  endif
      
 
 !! Choose new spin & calculate energy of new spin
 
+  enew = -eold
   newsp = -oldsp
-
-  if (newsp == 1) then
-     enew = 1
-  elseif (newsp == -1) then
-     enew = -1
-  endif
-    
 
 
 !! Calculate energy difference between old and new spins
 
-  ediff = (enew - eold)*neighbors
+  ediff = (enew - eold)
 
 
 
 !! Calculate energy and exponential 
 
-  expo = exp(ediff/temp)
+  expo = exp(-ediff/temp)
 
 
 !! Metropolis test
